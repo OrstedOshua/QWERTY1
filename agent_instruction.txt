@@ -1,1 +1,180 @@
-WAITING_FOR_NEW_COMMAND
+cat > calculator.py << 'EOF'
+import tkinter as tk
+from tkinter import ttk, messagebox
+import sympy as sp
+from sympy import symbols, diff, integrate, sin, cos, tan, sqrt, exp, log, limit, oo
+
+class AdvancedCalculator:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Advanced Scientific Calculator")
+        self.root.geometry("900x700")
+        
+        self.x = symbols('x')
+        
+        # Создание интерфейса
+        self.create_widgets()
+        
+    def create_widgets(self):
+        # Верхняя панель ввода
+        input_frame = ttk.LabelFrame(self.root, text="Ввод выражения f(x)", padding=10)
+        input_frame.pack(fill="x", padx=10, pady=5)
+        
+        self.expression_var = tk.StringVar()
+        self.expression_entry = ttk.Entry(input_frame, textvariable=self.expression_var, font=("Arial", 14))
+        self.expression_entry.pack(fill="x", side="left", expand=True, padx=(0, 10))
+        self.expression_entry.insert(0, "x**2 + 2*x + 1")
+        
+        calc_btn = ttk.Button(input_frame, text="Вычислить", command=self.calculate)
+        calc_btn.pack(side="right")
+        
+        # Панель операций
+        ops_frame = ttk.LabelFrame(self.root, text="Операции", padding=10)
+        ops_frame.pack(fill="x", padx=10, pady=5)
+        
+        buttons = [
+            ("Производная (f')", self.calc_derivative),
+            ("Вторая производная", self.calc_second_derivative),
+            ("Неопределенный интеграл", self.calc_indefinite_integral),
+            ("Определенный интеграл (0-1)", self.calc_definite_integral),
+            ("Предел при x->0", self.calc_limit_0),
+            ("Предел при x->oo", self.calc_limit_inf),
+            ("Упростить", self.simplify_expr),
+            ("Разложить на множители", self.factor_expr),
+            ("Найти корни", self.solve_roots),
+            ("Построить таблицу значений", self.show_table)
+        ]
+        
+        for i, (text, cmd) in enumerate(buttons):
+            btn = ttk.Button(ops_frame, text=text, command=cmd)
+            btn.grid(row=i//3, column=i%3, padx=5, pady=5, sticky="ew")
+        
+        ops_frame.grid_columnconfigure(0, weight=1)
+        ops_frame.grid_columnconfigure(1, weight=1)
+        ops_frame.grid_columnconfigure(2, weight=1)
+        
+        # Область результата
+        result_frame = ttk.LabelFrame(self.root, text="Результат", padding=10)
+        result_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        
+        self.result_text = tk.Text(result_frame, height=15, font=("Consolas", 12))
+        self.result_text.pack(fill="both", expand=True)
+        
+        scrollbar = ttk.Scrollbar(self.result_text, command=self.result_text.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.result_text.config(yscrollcommand=scrollbar.set)
+        
+    def get_expression(self):
+        try:
+            expr_str = self.expression_var.get()
+            return sp.sympify(expr_str, locals={'x': self.x, 'sin': sin, 'cos': cos, 'tan': tan, 'sqrt': sqrt, 'exp': exp, 'log': log})
+        except Exception as e:
+            messagebox.showerror("Ошибка ввода", f"Неверное выражение: {e}")
+            return None
+            
+    def calculate(self):
+        expr = self.get_expression()
+        if expr:
+            self.result_text.delete(1.0, tk.END)
+            self.result_text.insert(tk.END, f"Выражение: {expr}\nГотово к операциям.")
+            
+    def calc_derivative(self):
+        expr = self.get_expression()
+        if expr:
+            res = diff(expr, self.x)
+            self.show_result(f"Производная f'(x):\n{res}")
+            
+    def calc_second_derivative(self):
+        expr = self.get_expression()
+        if expr:
+            res = diff(expr, self.x, 2)
+            self.show_result(f"Вторая производная f''(x):\n{res}")
+            
+    def calc_indefinite_integral(self):
+        expr = self.get_expression()
+        if expr:
+            try:
+                res = integrate(expr, self.x)
+                self.show_result(f"Неопределенный интеграл:\n∫ f(x) dx = {res} + C")
+            except Exception as e:
+                self.show_result(f"Интеграл не берется в элементарных функциях:\n{e}")
+                
+    def calc_definite_integral(self):
+        expr = self.get_expression()
+        if expr:
+            try:
+                res = integrate(expr, (self.x, 0, 1))
+                self.show_result(f"Определенный интеграл от 0 до 1:\n∫[0,1] f(x) dx = {res}")
+            except Exception as e:
+                self.show_result(f"Ошибка вычисления интеграла:\n{e}")
+                
+    def calc_limit_0(self):
+        expr = self.get_expression()
+        if expr:
+            try:
+                res = limit(expr, self.x, 0)
+                self.show_result(f"Предел при x -> 0:\nlim = {res}")
+            except Exception as e:
+                self.show_result(f"Ошибка вычисления предела:\n{e}")
+                
+    def calc_limit_inf(self):
+        expr = self.get_expression()
+        if expr:
+            try:
+                res = limit(expr, self.x, oo)
+                self.show_result(f"Предел при x -> ∞:\nlim = {res}")
+            except Exception as e:
+                self.show_result(f"Ошибка вычисления предела:\n{e}")
+                
+    def simplify_expr(self):
+        expr = self.get_expression()
+        if expr:
+            res = sp.simplify(expr)
+            self.show_result(f"Упрощенное выражение:\n{res}")
+            
+    def factor_expr(self):
+        expr = self.get_expression()
+        if expr:
+            res = sp.factor(expr)
+            self.show_result(f"Разложение на множители:\n{res}")
+            
+    def solve_roots(self):
+        expr = self.get_expression()
+        if expr:
+            try:
+                res = sp.solve(expr, self.x)
+                self.show_result(f"Корни уравнения f(x)=0:\n{res}")
+            except Exception as e:
+                self.show_result(f"Не удалось найти корни:\n{e}")
+                
+    def show_table(self):
+        expr = self.get_expression()
+        if expr:
+            func = sp.lambdify(self.x, expr, "numpy")
+            import numpy as np
+            x_vals = np.linspace(-10, 10, 11)
+            y_vals = []
+            for val in x_vals:
+                try:
+                    y = func(val)
+                    y_vals.append(f"{y:.4f}")
+                except:
+                    y_vals.append("undef")
+            
+            table = "x\t|\tf(x)\n" + "-"*20 + "\n"
+            for x, y in zip(x_vals, y_vals):
+                table += f"{x:.1f}\t|\t{y}\n"
+            self.show_result(table)
+            
+    def show_result(self, text):
+        self.result_text.delete(1.0, tk.END)
+        self.result_text.insert(tk.END, text)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = AdvancedCalculator(root)
+    root.mainloop()
+EOF
+
+pip install sympy numpy
+echo "Файл calculator.py создан и зависимости установлены."
