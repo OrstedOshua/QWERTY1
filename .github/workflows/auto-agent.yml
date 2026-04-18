@@ -1,0 +1,75 @@
+name: Auto Agent via Config File
+
+on:
+  push:
+    paths:
+      - 'agent_instruction.txt'
+  workflow_dispatch:
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.TOKEN_TEST }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "AI Agent"
+          git config --global user.email "ai@local.host"
+
+      - name: Read Instruction
+        id: read_cmd
+        run: |
+          if [ ! -f agent_instruction.txt ]; then
+            echo "Файл инструкций не найден. Создаю пустой."
+            echo "WAITING_FOR_COMMAND" > agent_instruction.txt
+            exit 0
+          fi
+          
+          # Читаем команду
+          CMD=$(cat agent_instruction.txt)
+          echo "Получена команда: $CMD"
+          
+          # Сохраняем команду в переменную окружения для следующего шага
+          # Экранируем специальные символы для безопасности
+          echo "cmd_content<<EOF" >> $GITHUB_ENV
+          echo "$CMD" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Execute Command
+        run: |
+          echo "Начинаю выполнение инструкции..."
+          
+          # Очищаем файл инструкции, чтобы не зациклить
+          echo "EXECUTING..." > agent_instruction.txt
+          
+          # Выполняем команду из переменной
+          # Поддерживаемые команды:
+          # CREATE:<filename>:<content_base64>
+          # DELETE:<filename>
+          # UPDATE_README:<text>
+          
+          eval "${{ env.cmd_content }}"
+          
+          git add -A
+          if git diff-index --quiet HEAD; then
+            echo "Изменений нет."
+          else
+            git commit -m "Agent: Executed remote command"
+            git push origin HEAD:${{ github.ref }}
+            echo "Успешно отправлено на GitHub!"
+          fi
+
+      - name: Reset Instruction
+        run: |
+          echo "WAITING_FOR_NEW_COMMAND" > agent_instruction.txt
+          git add agent_instruction.txt
+          git commit -m "Agent: Ready for next command" || echo "Nothing to commit"
+          git push origin HEAD:${{ github.ref }} || true
