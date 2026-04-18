@@ -1,1 +1,3 @@
-CMD: echo "Hello World" > test.txt
+   ```text
+   CMD: echo 'код_калькулятора_выше' > calculator.py
+   CMD: echo 'текст_readme_выше' > README.md
