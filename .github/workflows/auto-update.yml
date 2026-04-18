@@ -16,7 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GH_TOKEN }} # Используем ваш секретный токен
+          token: ${{ secrets.TOKEN_TEST }} # Используем ваш секретный токен
           fetch-depth: 0
 
       - name: Configure Git
