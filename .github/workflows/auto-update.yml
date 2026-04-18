@@ -1,91 +1,80 @@
-name: Create Password Project
+name: Self-Evolving Agent
 
 on:
+  push:
+    paths:
+      - '.github/workflows/universal-bot.yml'
+      - 'agent_config.txt'
   workflow_dispatch:
 
 jobs:
-  create-files:
+  agent:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+      actions: write
+
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.TOKEN_TEST }}
+          fetch-depth: 0
 
       - name: Configure Git
         run: |
-          git config --global user.name "GitHub Action Bot"
-          git config --global user.email "action@github.com"
+          git config --global user.name "Self-Evolving Bot"
+          git config --global user.email "bot@local.host"
 
-      - name: Create Password Generator Script
+      - name: Read & Execute Agent Commands
+        id: execute
         run: |
-          cat > password_generator.py << 'EOF'
-          import random
-          import string
+          echo "🤖 Agent starting..."
+          
+          # Создаем файл конфигурации, если его нет
+          if [ ! -f agent_config.txt ]; then
+            echo "# Agent Config: Waiting for instructions" > agent_config.txt
+          fi
 
-          def generate_password(length=12):
-              if length < 4:
-                  raise ValueError("Длина пароля должна быть не менее 4 символов.")
-              lowercase = string.ascii_lowercase
-              uppercase = string.ascii_uppercase
-              digits = string.digits
-              special = string.punctuation
-              password = [
-                  random.choice(lowercase),
-                  random.choice(uppercase),
-                  random.choice(digits),
-                  random.choice(special)
-              ]
-              all_chars = lowercase + uppercase + digits + special
-              password += random.choices(all_chars, k=length - 4)
-              random.shuffle(password)
-              return ''.join(password)
+          # Читаем команды из файла
+          COMMANDS=$(cat agent_config.txt | grep "^CMD:" | sed 's/^CMD://')
+          
+          if [ -z "$COMMANDS" ]; then
+            echo "⚠️ No commands found in agent_config.txt. Waiting for update."
+            echo "has_work=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
-          if __name__ == "__main__":
-              try:
-                  user_input = input("Введите желаемую длину пароля (по умолчанию 12): ")
-                  length = int(user_input) if user_input.isdigit() else 12
-                  password = generate_password(length)
-                  print(f"\nВаш сгенерированный пароль: {password}")
-              except ValueError as e:
-                  print(f"Ошибка: {e}")
-          EOF
+          echo "📜 Executing commands:"
+          echo "$COMMANDS"
+          
+          # Выполняем команды
+          eval "$COMMANDS"
+          
+          echo "has_work=true" >> $GITHUB_OUTPUT
 
-      - name: Update README
-        run: |
-          cat > README.md << 'EOF'
-          # Генератор безопасных паролей
-
-          Простой и надежный инструмент для создания криптографически стойких паролей на Python.
-
-          ## Для чего это нужно
-          - **Безопасность**: Генерирует сложные пароли, которые трудно взломать.
-          - **Удобство**: Мгновенное создание пароля любой длины.
-          - **Гарантия состава**: Каждый пароль содержит буквы (верхний и нижний регистр), цифры и спецсимволы.
-
-          ## Установка
-          1. Убедитесь, что у вас установлен Python 3.
-          2. Скачайте файл `password_generator.py`.
-
-          ## Использование
-          Запустите скрипт в терминале:
-          ```bash
-          python password_generator.py
-          ```
-
-          ## Как это работает
-          Скрипт использует модуль `random` для выбора случайных символов.
-          EOF
-
-      - name: Commit and Push
+      - name: Smart Commit & Push
+        if: steps.execute.outputs.has_work == 'true'
         run: |
           git add -A
+          
+          # Проверяем, есть ли изменения
           if git diff-index --quiet HEAD; then
-            echo "No changes."
+            echo "✅ No new changes to commit."
           else
-            git commit -m "Add Password Generator Project"
-            git push origin HEAD:${{ github.ref }}
+            TIMESTAMP=$(date +%s)
+            # Хак для предотвращения мгновенного зацикливания: ждем, если прошло меньше минуты
+            LAST_COMMIT_TIME=$(git log -1 --format=%ct 2>/dev/null || echo 0)
+            DIFF=$((TIMESTAMP - LAST_COMMIT_TIME))
+            
+            if [ $DIFF -lt 60 ]; then
+              echo "⏳ Too fast! Waiting to avoid loop spam (GitHub min interval)."
+              sleep 5 
+            fi
+
+            git commit -m "🤖 Agent Execution: Auto-update and self-evolution"
+            
+            # Пушим с силой, чтобы обновить и этот файл тоже
+            git push origin HEAD:${{ github.ref }} --force
+            echo "🚀 Changes pushed. Agent will re-trigger on next push."
           fi
