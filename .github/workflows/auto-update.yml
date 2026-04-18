@@ -1,15 +1,10 @@
-name: Universal Bot Auto-Update
+name: Create Password Project
 
 on:
   workflow_dispatch:
-    inputs:
-      custom_message:
-        description: 'Optional commit message'
-        required: false
-        default: 'Auto-update by Bot'
 
 jobs:
-  update-repo:
+  create-files:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -19,53 +14,78 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.TOKEN_TEST }}
-          fetch-depth: 0
 
       - name: Configure Git
         run: |
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "action@github.com"
 
-      - name: Execute File Operations
+      - name: Create Password Generator Script
         run: |
-          # Здесь выполняются команды, которые я пропишу в env ниже
-          # Формат: eval "$COMMAND_NAME"
-          
-          if [ -n "$COMMAND_1" ]; then eval "$COMMAND_1"; fi
-          if [ -n "$COMMAND_2" ]; then eval "$COMMAND_2"; fi
-          if [ -n "$COMMAND_3" ]; then eval "$COMMAND_3"; fi
-          if [ -n "$COMMAND_4" ]; then eval "$COMMAND_4"; fi
-          if [ -n "$COMMAND_5" ]; then eval "$COMMAND_5"; fi
+          cat > password_generator.py << 'EOF'
+          import random
+          import string
 
-      - name: Commit and Push Changes
+          def generate_password(length=12):
+              if length < 4:
+                  raise ValueError("Длина пароля должна быть не менее 4 символов.")
+              lowercase = string.ascii_lowercase
+              uppercase = string.ascii_uppercase
+              digits = string.digits
+              special = string.punctuation
+              password = [
+                  random.choice(lowercase),
+                  random.choice(uppercase),
+                  random.choice(digits),
+                  random.choice(special)
+              ]
+              all_chars = lowercase + uppercase + digits + special
+              password += random.choices(all_chars, k=length - 4)
+              random.shuffle(password)
+              return ''.join(password)
+
+          if __name__ == "__main__":
+              try:
+                  user_input = input("Введите желаемую длину пароля (по умолчанию 12): ")
+                  length = int(user_input) if user_input.isdigit() else 12
+                  password = generate_password(length)
+                  print(f"\nВаш сгенерированный пароль: {password}")
+              except ValueError as e:
+                  print(f"Ошибка: {e}")
+          EOF
+
+      - name: Update README
+        run: |
+          cat > README.md << 'EOF'
+          # Генератор безопасных паролей
+
+          Простой и надежный инструмент для создания криптографически стойких паролей на Python.
+
+          ## Для чего это нужно
+          - **Безопасность**: Генерирует сложные пароли, которые трудно взломать.
+          - **Удобство**: Мгновенное создание пароля любой длины.
+          - **Гарантия состава**: Каждый пароль содержит буквы (верхний и нижний регистр), цифры и спецсимволы.
+
+          ## Установка
+          1. Убедитесь, что у вас установлен Python 3.
+          2. Скачайте файл `password_generator.py`.
+
+          ## Использование
+          Запустите скрипт в терминале:
+          ```bash
+          python password_generator.py
+          ```
+
+          ## Как это работает
+          Скрипт использует модуль `random` для выбора случайных символов.
+          EOF
+
+      - name: Commit and Push
         run: |
           git add -A
           if git diff-index --quiet HEAD; then
-            echo "No changes to commit."
+            echo "No changes."
           else
-            git commit -m "${{ github.event.inputs.custom_message }}: Automated update"
+            git commit -m "Add Password Generator Project"
             git push origin HEAD:${{ github.ref }}
-            echo "Changes pushed successfully!"
           fi
-
-# =========================================================
-# ЗОНА УПРАВЛЕНИЯ ДЛЯ БОТА
-# Я буду менять содержимое секции env ниже под каждую задачу.
-# Тебе нужно будет просто скопировать весь файл целиком с новыми командами здесь.
-# =========================================================
-env:
-  # Пример команды создания:
-  # COMMAND_1: "echo 'print(\"Hello\")' > hello.py"
-  
-  # Пример команды обновления:
-  # COMMAND_2: "echo '# New Readme' > README.md"
-  
-  # Пример удаления:
-  # COMMAND_3: "rm old_file.txt"
-  
-  # СЕЙЧАС ЗДЕСЬ ПУСТО, Я ЗАПОЛНЮ ЭТО ПРИ СЛЕДУЮЩЕМ ЗАПРОСЕ НА СОЗДАНИЕ ПРОЕКТА
-  COMMAND_1: ""
-  COMMAND_2: ""
-  COMMAND_3: ""
-  COMMAND_4: ""
-  COMMAND_5: ""
