@@ -1,46 +1,71 @@
-name: Auto Update Repository
+name: Universal Bot Auto-Update
 
 on:
-  workflow_dispatch: # Запуск вручную
-  schedule:
-    - cron: '0 0 * * *' # Или по расписанию, если нужно
+  workflow_dispatch:
+    inputs:
+      custom_message:
+        description: 'Optional commit message'
+        required: false
+        default: 'Auto-update by Bot'
 
 jobs:
-  update-readme:
+  update-repo:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.TOKEN_TEST }}
           fetch-depth: 0
 
-      - name: Configure Git User
+      - name: Configure Git
         run: |
-          git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Action Bot"
+          git config --global user.email "action@github.com"
 
-      - name: Update README.md
+      - name: Execute File Operations
         run: |
-          echo "# Проект: Реконструкция Кода" > README.md
-          echo "" >> README.md
-          echo "## О проекте" >> README.md
-          echo "Этот репозиторий предназначен для хранения и реконструкции кода." >> README.md
-          echo "" >> README.md
-          echo "## Для чего это нужно" >> README.md
-          echo "- Восстановление утерянных данных" >> README.md
-          echo "- Обучение работе с Git и GitHub Actions" >> README.md
-          echo "- Автоматическое обновление файлов" >> README.md
-          echo "" >> README.md
-          echo "Последнее обновление: $(date)" >> README.md
+          # Здесь выполняются команды, которые я пропишу в env ниже
+          # Формат: eval "$COMMAND_NAME"
+          
+          if [ -n "$COMMAND_1" ]; then eval "$COMMAND_1"; fi
+          if [ -n "$COMMAND_2" ]; then eval "$COMMAND_2"; fi
+          if [ -n "$COMMAND_3" ]; then eval "$COMMAND_3"; fi
+          if [ -n "$COMMAND_4" ]; then eval "$COMMAND_4"; fi
+          if [ -n "$COMMAND_5" ]; then eval "$COMMAND_5"; fi
 
-      - name: Commit and Push changes
+      - name: Commit and Push Changes
         run: |
-          git add README.md
+          git add -A
           if git diff-index --quiet HEAD; then
-            echo "No changes to commit"
+            echo "No changes to commit."
           else
-            git commit -m "Auto-update README.md [skip ci]"
-            git push origin HEAD
+            git commit -m "${{ github.event.inputs.custom_message }}: Automated update"
+            git push origin HEAD:${{ github.ref }}
+            echo "Changes pushed successfully!"
           fi
+
+# =========================================================
+# ЗОНА УПРАВЛЕНИЯ ДЛЯ БОТА
+# Я буду менять содержимое секции env ниже под каждую задачу.
+# Тебе нужно будет просто скопировать весь файл целиком с новыми командами здесь.
+# =========================================================
+env:
+  # Пример команды создания:
+  # COMMAND_1: "echo 'print(\"Hello\")' > hello.py"
+  
+  # Пример команды обновления:
+  # COMMAND_2: "echo '# New Readme' > README.md"
+  
+  # Пример удаления:
+  # COMMAND_3: "rm old_file.txt"
+  
+  # СЕЙЧАС ЗДЕСЬ ПУСТО, Я ЗАПОЛНЮ ЭТО ПРИ СЛЕДУЮЩЕМ ЗАПРОСЕ НА СОЗДАНИЕ ПРОЕКТА
+  COMMAND_1: ""
+  COMMAND_2: ""
+  COMMAND_3: ""
+  COMMAND_4: ""
+  COMMAND_5: ""
