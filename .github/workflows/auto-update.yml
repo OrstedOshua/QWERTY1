@@ -1,41 +1,46 @@
 name: Auto Update Repository
 
 on:
-  workflow_dispatch: # Запуск вручную из вкладки Actions
-  push:
-    branches:
-      - main # Или ваша основная ветка (master, develop и т.д.)
+  workflow_dispatch: # Запуск вручную
+  schedule:
+    - cron: '0 0 * * *' # Или по расписанию, если нужно
 
 jobs:
-  update:
+  update-readme:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # Разрешение на запись в репозиторий
-
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.TOKEN_TEST }} # Используем ваш секретный токен
+          token: ${{ secrets.TOKEN_TEST }}
           fetch-depth: 0
 
-      - name: Configure Git
+      - name: Configure Git User
         run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
 
-      - name: Make changes (Example)
+      - name: Update README.md
         run: |
-          # Здесь можно добавить скрипты для автоматического изменения файлов
-          # Например, обновление версии в файле или генерация отчета
-          echo "Last updated: $(date)" >> last_update.txt
+          echo "# Проект: Реконструкция Кода" > README.md
+          echo "" >> README.md
+          echo "## О проекте" >> README.md
+          echo "Этот репозиторий предназначен для хранения и реконструкции кода." >> README.md
+          echo "" >> README.md
+          echo "## Для чего это нужно" >> README.md
+          echo "- Восстановление утерянных данных" >> README.md
+          echo "- Обучение работе с Git и GitHub Actions" >> README.md
+          echo "- Автоматическое обновление файлов" >> README.md
+          echo "" >> README.md
+          echo "Последнее обновление: $(date)" >> README.md
 
-          # Если есть изменения, добавляем и коммитим их
-          if [ -n "$(git status --porcelain)" ]; then
-            git add .
-            git commit -m "chore: auto-update by GitHub Actions"
-            git push origin HEAD
-            echo "Changes pushed successfully!"
+      - name: Commit and Push changes
+        run: |
+          git add README.md
+          if git diff-index --quiet HEAD; then
+            echo "No changes to commit"
           else
-            echo "No changes to commit."
+            git commit -m "Auto-update README.md [skip ci]"
+            git push origin HEAD
           fi
